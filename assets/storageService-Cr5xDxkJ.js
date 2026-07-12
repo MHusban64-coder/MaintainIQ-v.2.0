@@ -1,0 +1,1 @@
+import{r,u as e,a as s}from"./firebaseStorage-DspGLDjj.js";import{D as n}from"./index-BCEF669I.js";async function c(t,o){if(!t)return"";const a=r(n,o);return await e(a,t,{contentType:t.type}),s(a)}export{c as u};
