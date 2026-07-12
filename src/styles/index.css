@@ -1,0 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-line; }
+  html { @apply scroll-smooth; }
+  body { @apply m-0 min-w-[320px] bg-canvas font-sans text-ink antialiased transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100; }
+  button, input, select, textarea { font: inherit; }
+  textarea { @apply min-h-28 resize-y rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-brand-950; }
+  ::selection { @apply bg-brand-100 text-brand-900; }
+}

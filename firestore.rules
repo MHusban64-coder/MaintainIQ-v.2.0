@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    function ownsDocument() { return signedIn() && resource.data.createdBy == request.auth.uid; }
+    function ownProfileUpdate() {
+      return signedIn() && request.auth.uid == resource.id
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL', 'updatedAt']);
+    }
+    function bootstrapAdmin(userId) {
+      return !exists(/databases/$(database)/documents/system/bootstrap)
+        && getAfter(/databases/$(database)/documents/system/bootstrap).data.adminUid == userId;
+    }
+
+    match /system/bootstrap {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/system/bootstrap)
+        && request.resource.data.keys().hasOnly(['adminUid', 'createdAt'])
+        && request.resource.data.adminUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role in ['Member', 'Admin']
+        && (request.resource.data.role == 'Member' || (request.resource.data.role == 'Admin' && bootstrapAdmin(userId)));
+      allow update: if ownProfileUpdate()
+        || (isAdmin() && userId != request.auth.uid
+          && request.resource.data.role in ['Member', 'Admin']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt']));
+      allow delete: if false;
+    }
+    match /assets/{assetId} {
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow read, update, delete: if ownsDocument();
+    }
+    match /maintenance/{recordId} {
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow read, update, delete: if ownsDocument();
+    }
+    match /issues/{issueId} {
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow read, update, delete: if ownsDocument();
+    }
+  }
+}

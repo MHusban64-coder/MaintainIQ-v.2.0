@@ -1,0 +1,11 @@
+import { Keyboard, QrCode } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { QRScanner } from '../../components/assets/QRScanner';
+import { Button, Card, Input, PageHeader } from '../../components/common';
+import { useAuth } from '../../hooks/useAuth';
+import { getAsset, getAssetByCode } from '../../services/assetService';
+import { getErrorMessage, parseQrValue } from '../../utils/helpers';
+
+export default function ScannerPage() { const { user } = useAuth(); const navigate = useNavigate(); const [code, setCode] = useState(''); const [loading, setLoading] = useState(false); const find = async (value) => { setLoading(true); try { const parsed = parseQrValue(value); const asset = parsed.assetId ? await getAsset(parsed.assetId) : await getAssetByCode(parsed.assetCode, user.uid); if (!asset) return toast.error('We couldn’t find an asset for that code.'); navigate(`/assets/${asset.id}`); } catch (error) { toast.error(getErrorMessage(error)); } finally { setLoading(false); } }; return <div className="mx-auto max-w-4xl space-y-7 animate-soft-in"><PageHeader eyebrow="QR scanner" title="Bring an asset into focus." description="Scan a MaintainIQ code with your camera, or enter the code printed on the label." /><div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]"><Card className="p-5 sm:p-7"><QRScanner onScan={find} onError={(message) => toast.error(message)} /></Card><Card className="p-5 sm:p-7"><div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60"><Keyboard size={21} /></div><h2 className="mt-5 text-lg font-bold text-ink dark:text-white">Enter a code instead</h2><p className="mt-2 text-sm leading-6 text-muted">Useful when a camera isn’t available or the QR label is worn.</p><form className="mt-6 space-y-4" onSubmit={(event) => { event.preventDefault(); if (code.trim()) find(code); }}><Input label="Asset code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="MIQ-XXXX" /><Button type="submit" loading={loading} className="w-full"><QrCode size={17} />Find asset</Button></form></Card></div></div>; }

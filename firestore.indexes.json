@@ -1,0 +1,11 @@
+{
+  "indexes": [
+    { "collectionGroup": "assets", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "assets", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "assetCode", "order": "ASCENDING" }] },
+    { "collectionGroup": "maintenance", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "maintenanceDate", "order": "DESCENDING" }] },
+    { "collectionGroup": "maintenance", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "assetId", "order": "ASCENDING" }, { "fieldPath": "maintenanceDate", "order": "DESCENDING" }] },
+    { "collectionGroup": "issues", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "issues", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "assetId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] }
+  ],
+  "fieldOverrides": []
+}

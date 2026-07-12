@@ -1,0 +1,19 @@
+import { ShieldCheck, UserCog, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { Badge, Button, Card, ErrorState, PageHeader, Skeleton } from '../components/common';
+import { useAuth } from '../hooks/useAuth';
+import { listUsers, updateUserRole } from '../services/userService';
+import { formatDate, getErrorMessage } from '../utils/helpers';
+
+export default function AdminPage() {
+  const { user } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [saving, setSaving] = useState('');
+  const load = async () => { setLoading(true); setError(false); try { setUsers(await listUsers()); } catch { setError(true); } finally { setLoading(false); } };
+  useEffect(() => { load(); }, []);
+  const promote = async (person) => { setSaving(person.id); try { await updateUserRole(person.id, 'Admin'); setUsers((current) => current.map((item) => item.id === person.id ? { ...item, role: 'Admin' } : item)); toast.success(`${person.name} is now an administrator.`); } catch (requestError) { toast.error(getErrorMessage(requestError)); } finally { setSaving(''); } };
+  return <div className="mx-auto max-w-5xl space-y-7 animate-soft-in"><PageHeader eyebrow="Administrator access" title="Workspace administration" description="Manage administrator access. The original bootstrap administrator cannot be self-demoted, preserving a secure recovery path." /><div className="grid gap-4 sm:grid-cols-3"><Card className="p-5"><Users className="text-brand-600" size={21} /><p className="mt-4 text-2xl font-bold text-ink dark:text-white">{loading ? '—' : users.length}</p><p className="mt-1 text-sm text-muted">Registered users</p></Card><Card className="p-5"><ShieldCheck className="text-teal-600" size={21} /><p className="mt-4 text-2xl font-bold text-ink dark:text-white">{loading ? '—' : users.filter((item) => item.role === 'Admin').length}</p><p className="mt-1 text-sm text-muted">Administrators</p></Card><Card className="p-5"><UserCog className="text-amber-600" size={21} /><p className="mt-4 text-2xl font-bold text-ink dark:text-white">{loading ? '—' : users.filter((item) => item.role === 'Member').length}</p><p className="mt-1 text-sm text-muted">Members</p></Card></div>{loading ? <Skeleton className="h-72" /> : error ? <ErrorState description="We couldn't load workspace users." action={<Button onClick={load}>Try again</Button>} /> : <Card className="overflow-hidden"><div className="border-b border-line p-5 dark:border-slate-800"><h2 className="font-bold text-ink dark:text-white">People & access</h2><p className="mt-1 text-sm text-muted">Only administrators can view this list or grant administrator access.</p></div><div className="divide-y divide-line dark:divide-slate-800">{users.map((person) => <div key={person.id} className="flex flex-wrap items-center gap-3 p-4 sm:p-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-950 dark:text-brand-300">{person.photoURL ? <img src={person.photoURL} alt="" className="h-full w-full rounded-xl object-cover" /> : person.name?.slice(0, 1).toUpperCase()}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-ink dark:text-white">{person.name}{person.id === user.uid && <span className="ml-2 text-xs font-medium text-muted">You</span>}</p><p className="truncate text-xs text-muted">{person.email} · Joined {formatDate(person.createdAt)}</p></div><Badge tone={person.role === 'Admin' ? 'success' : 'info'}>{person.role}</Badge>{person.role === 'Member' && <Button size="sm" variant="secondary" loading={saving === person.id} onClick={() => promote(person)}>Make admin</Button>}</div>)}</div></Card>}</div>;
+}
