@@ -1,18 +1,211 @@
-import { BarChart3, ClipboardCheck, LayoutDashboard, LogOut, QrCode, Settings, ShieldCheck, UserRound, Wrench, X } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { cn } from '../../utils/helpers';
-import { AppLogo } from './AppLogo';
+import { NavLink, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard,
+  Package,
+  Wrench,
+  AlertCircle,
+  User,
+  Settings,
+  LogOut,
+  QrCode,
+  X,
+  Zap,
+} from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { APP_NAME } from '@/utils/constants'
+import toast from 'react-hot-toast'
 
-const navigation = [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }, { to: '/assets', label: 'Assets', icon: Wrench }, { to: '/scanner', label: 'Scan QR', icon: QrCode }, { to: '/maintenance', label: 'Maintenance', icon: ClipboardCheck }, { to: '/issues', label: 'Issues', icon: BarChart3 }];
-const personal = [{ to: '/profile', label: 'Profile', icon: UserRound }, { to: '/settings', label: 'Settings', icon: Settings }];
-const admin = { to: '/admin', label: 'Administration', icon: ShieldCheck };
-const linkClass = ({ isActive }) => cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition', isActive ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300' : 'text-muted hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800 dark:hover:text-slate-100');
-function Links({ items, onClose }) { return items.map(({ to, label, icon: Icon }) => <NavLink onClick={onClose} key={to} to={to} className={linkClass}><Icon size={18} />{label}</NavLink>); }
+const navItems = [
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+  { label: 'Assets', icon: Package, to: '/assets' },
+  { label: 'Maintenance', icon: Wrench, to: '/issues', end: false },
+  { label: 'Issues', icon: AlertCircle, to: '/issues' },
+  { label: 'QR Scanner', icon: QrCode, to: '/scan' },
+]
 
-export function Sidebar({ mobileOpen, onClose, onLogout }) {
-  const { profile } = useAuth();
-  const items = profile?.role === 'Admin' ? [...navigation, admin] : navigation;
-  const logout = () => { onClose(); onLogout(); };
-  return <><aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-white p-4 dark:border-slate-800 dark:bg-slate-950 lg:flex"><AppLogo className="px-2 py-2" /><nav className="mt-8 space-y-1"><Links items={items} /></nav><div className="mt-auto space-y-1 border-t border-line pt-4 dark:border-slate-800"><Links items={personal} /><button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition hover:bg-red-50 hover:text-danger dark:hover:bg-red-950/30"><LogOut size={18} />Log out</button></div></aside><div className={cn('fixed inset-0 z-50 bg-slate-950/45 transition lg:hidden', mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0')} onClick={onClose}><aside onClick={(event) => event.stopPropagation()} className={cn('flex h-full w-72 flex-col bg-white p-4 shadow-float transition-transform dark:bg-slate-950', mobileOpen ? 'translate-x-0' : '-translate-x-full')}><div className="flex items-center justify-between"><AppLogo /><button aria-label="Close menu" onClick={onClose} className="rounded-lg p-2 text-muted hover:bg-slate-100 dark:hover:bg-slate-800"><X size={19} /></button></div><nav className="mt-8 space-y-1"><Links items={items} onClose={onClose} /></nav><div className="mt-auto space-y-1 border-t border-line pt-4 dark:border-slate-800"><Links items={personal} onClose={onClose} /><button onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-danger hover:bg-red-50 dark:hover:bg-red-950/30"><LogOut size={18} />Log out</button></div></aside></div></>;
+const bottomItems = [
+  { label: 'Profile', icon: User, to: '/profile' },
+  { label: 'Settings', icon: Settings, to: '/settings' },
+]
+
+function NavItem({ item, collapsed, onClick }) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end !== false}
+      onClick={onClick}
+      className={({ isActive }) => [
+        'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium',
+        'transition-all duration-150',
+        'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1',
+        isActive
+          ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400'
+          : 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-700/60 dark:hover:text-secondary-100',
+      ].join(' ')}
+    >
+      <item.icon
+        size={18}
+        className="shrink-0"
+      />
+      {!collapsed && (
+        <span className="truncate">{item.label}</span>
+      )}
+      {collapsed && (
+        <span className="sr-only">{item.label}</span>
+      )}
+    </NavLink>
+  )
+}
+
+export default function Sidebar({ collapsed, mobileOpen, onMobileClose }) {
+  const { logout, currentUser } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    try {
+      await logout()
+      navigate('/')
+      toast.success('Logged out successfully.')
+    } catch {
+      toast.error('Failed to log out. Please try again.')
+    }
+  }
+
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className={`flex items-center gap-2.5 px-4 py-5 shrink-0 ${collapsed ? 'justify-center' : ''}`}>
+        <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center shrink-0">
+          <Zap size={16} className="text-white" />
+        </div>
+        {!collapsed && (
+          <span className="font-bold text-secondary-900 dark:text-white text-base tracking-tight">
+            {APP_NAME}
+          </span>
+        )}
+        {/* Mobile close button */}
+        {mobileOpen !== undefined && (
+          <button
+            onClick={onMobileClose}
+            className="ml-auto p-1 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-200 lg:hidden"
+            aria-label="Close sidebar"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      <div className="w-full h-px bg-border dark:bg-secondary-700 shrink-0" />
+
+      {/* Main nav */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1" aria-label="Main navigation">
+        {navItems.map((item) => (
+          <NavItem
+            key={item.to}
+            item={item}
+            collapsed={collapsed}
+            onClick={onMobileClose}
+          />
+        ))}
+      </nav>
+
+      <div className="w-full h-px bg-border dark:bg-secondary-700 shrink-0" />
+
+      {/* Bottom nav */}
+      <nav className="px-3 py-4 space-y-1" aria-label="User navigation">
+        {bottomItems.map((item) => (
+          <NavItem
+            key={item.to}
+            item={item}
+            collapsed={collapsed}
+            onClick={onMobileClose}
+          />
+        ))}
+        <button
+          onClick={handleLogout}
+          className={[
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium',
+            'text-secondary-500 hover:bg-red-50 hover:text-danger',
+            'dark:text-secondary-500 dark:hover:bg-red-900/20 dark:hover:text-red-400',
+            'transition-all duration-150',
+            'focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-1',
+            collapsed ? 'justify-center' : '',
+          ].join(' ')}
+        >
+          <LogOut size={18} className="shrink-0" />
+          {!collapsed && <span>Logout</span>}
+          {collapsed && <span className="sr-only">Logout</span>}
+        </button>
+      </nav>
+
+      {/* User chip */}
+      {!collapsed && currentUser && (
+        <div className="px-4 pb-4 shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary-50 dark:bg-secondary-700/50">
+            <div className="w-7 h-7 rounded-full bg-primary-600 flex items-center justify-center shrink-0 text-white text-xs font-semibold">
+              {(currentUser.displayName || currentUser.email || 'U')[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-secondary-900 dark:text-white truncate">
+                {currentUser.displayName || 'User'}
+              </p>
+              <p className="text-xs text-secondary-500 dark:text-secondary-400 truncate">
+                {currentUser.email}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        className={[
+          'hidden lg:flex flex-col h-screen sticky top-0',
+          'bg-white dark:bg-secondary-900',
+          'border-r border-border dark:border-secondary-700',
+          'transition-all duration-300 shrink-0',
+          collapsed ? 'w-16' : 'w-60',
+        ].join(' ')}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-secondary-900/50 backdrop-blur-sm lg:hidden"
+              onClick={onMobileClose}
+              aria-hidden="true"
+            />
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className={[
+                'fixed inset-y-0 left-0 z-50 w-72',
+                'flex flex-col',
+                'bg-white dark:bg-secondary-900',
+                'border-r border-border dark:border-secondary-700',
+                'lg:hidden',
+              ].join(' ')}
+            >
+              {sidebarContent}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  )
 }

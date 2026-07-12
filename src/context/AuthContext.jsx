@@ -1,38 +1,88 @@
-import { createContext, useEffect, useMemo, useState } from 'react';
-import { browserLocalPersistence, createUserWithEmailAndPassword, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
-import { auth } from '../firebase/config';
-import { createUserProfile, getUserProfile } from '../services/userService';
+import { createContext, useContext, useEffect, useState } from 'react'
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  updateProfile,
+} from 'firebase/auth'
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { auth, db } from '@/firebase/config'
 
-export const AuthContext = createContext(null);
+const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null)
+  const [userProfile, setUserProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  async function register(name, email, password) {
+    const credential = await createUserWithEmailAndPassword(auth, email, password)
+    await updateProfile(credential.user, { displayName: name })
+    await setDoc(doc(db, 'users', credential.user.uid), {
+      name,
+      email,
+      role: 'user',
+      createdAt: serverTimestamp(),
+    })
+    return credential
+  }
+
+  function login(email, password) {
+    return signInWithEmailAndPassword(auth, email, password)
+  }
+
+  function logout() {
+    return signOut(auth)
+  }
+
+  function resetPassword(email) {
+    return sendPasswordResetEmail(auth, email)
+  }
+
+  async function fetchUserProfile(uid) {
+    try {
+      const snap = await getDoc(doc(db, 'users', uid))
+      if (snap.exists()) setUserProfile(snap.data())
+    } catch {
+      // non-fatal — profile may not exist yet
+    }
+  }
 
   useEffect(() => {
-    setPersistence(auth, browserLocalPersistence).catch(() => undefined);
-    return onAuthStateChanged(auth, async (nextUser) => {
-      setUser(nextUser);
-      if (nextUser) {
-        try { setProfile(await getUserProfile(nextUser.uid)); } catch { setProfile(null); }
-      } else setProfile(null);
-      setLoading(false);
-    });
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user)
+      if (user) {
+        await fetchUserProfile(user.uid)
+      } else {
+        setUserProfile(null)
+      }
+      setLoading(false)
+    })
+    return unsubscribe
+  }, [])
 
-  const value = useMemo(() => ({
-    user, profile, loading,
-    refreshProfile: async () => setProfile(await getUserProfile(auth.currentUser.uid)),
-    login: (email, password) => signInWithEmailAndPassword(auth, email, password),
-    register: async (name, email, password) => {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(credential.user, { displayName: name.trim() });
-      const nextProfile = await createUserProfile(credential.user, name);
-      setProfile(nextProfile);
-      return credential;
-    },
-    logout: () => signOut(auth),
-  }), [user, profile, loading]);
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const value = {
+    currentUser,
+    userProfile,
+    loading,
+    register,
+    login,
+    logout,
+    resetPassword,
+    fetchUserProfile,
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within AuthProvider')
+  return context
 }
