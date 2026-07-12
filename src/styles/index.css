@@ -2,7 +2,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+/* Base Styles */
 @layer base {
   * { @apply border-line; }
   html { @apply scroll-smooth; }
